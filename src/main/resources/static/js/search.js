@@ -47,14 +47,11 @@ $( document ).ready(function(){
     	refreshFavoritePannel();
     });
     // handle autoRefreshButton
+    var autoRefreshFavouriteId = null;
     $("#autoRefreshButton").change(function() {
     	console.log("autoRefreshButton");
-
         if ($("#autoRefreshButton").prop('checked')) {
-
-            var autoRefreshFavouriteId = setInterval(function() {
-    			refreshFavoritePannel();
-    		}, 5000);
+           autoRefreshFavouriteId  = setInterval(refreshFavoritePannel, 5000);
     	} else {
     		clearInterval(autoRefreshFavouriteId);
     	}
