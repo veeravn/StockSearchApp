@@ -37,40 +37,83 @@ $( document ).ready(function(){
             });
         }
     }
-});
-$( "#stockInput" ).autocomplete({      
-    //source: JSON data retrieved from server
-    source: function( request, response ) {
-        $.ajax({
-            url: "/api/lookup",
-            data: { input: request.term},
-            type: "GET",
-            datatype: "json",
-            success: function( result ) {
-                var jsonObject = jQuery.parseJSON(result);
+    $('#searchForm').on('submit', function(e){
+    	e.preventDefault();
+    	var symbol = $("#stockInput").val();
+    	generateFormSectionTwo(symbol);
+    });
+    //handle the refreshButton problem
+    $("#refreshButton").click(function(e) {
+    	refreshFavoritePannel();
+    });
+    // handle autoRefreshButton
+    $("#autoRefreshButton").change(function() {
+    	console.log("autoRefreshButton");
 
-                if(jsonObject.length==0) {
-                   document.getElementById("validationInformation").innerHTML = "Select a valid entry";
-                    $("#nextSlide").prop('disabled', true);
-                   // $("#validationInformation").innerHTML = "Select a valid entry";
-                    response(null);
+        if ($("#autoRefreshButton").prop('checked')) {
 
-                }
-                else {
-                    document.getElementById("validationInformation").innerHTML = "";
+            var autoRefreshFavouriteId = setInterval(function() {
+    			refreshFavoritePannel();
+    		}, 5000);
+    	} else {
+    		clearInterval(autoRefreshFavouriteId);
+    	}
+    });
+    $( "#stockInput" ).autocomplete({
+        //source: JSON data retrieved from server
+        source: function( request, response ) {
+            $.ajax({
+                url: "/api/lookup",
+                data: { input: request.term},
+                type: "GET",
+                datatype: "json",
+                success: function( result ) {
+                    var jsonObject = jQuery.parseJSON(result);
 
-                    var data = new Array();
+                    if(jsonObject.length==0) {
+                       document.getElementById("validationInformation").innerHTML = "Select a valid entry";
+                        $("#nextSlide").prop('disabled', true);
+                       // $("#validationInformation").innerHTML = "Select a valid entry";
+                        response(null);
 
-                    for(var i=0; i<jsonObject.length; i++) {
-                        data[i] = { label: jsonObject[i].Symbol + " - " + jsonObject[i].Name + " ( " + jsonObject[i].Exchange + " ) ", value: jsonObject[i].Symbol};
                     }
-                    response( data );
+                    else {
+                        document.getElementById("validationInformation").innerHTML = "";
 
-                }                                
-            }
-        });
-    }
+                        var data = new Array();
+
+                        for(var i=0; i<jsonObject.length; i++) {
+                            data[i] = { label: jsonObject[i].Symbol + " - " + jsonObject[i].Name + " ( " + jsonObject[i].Exchange + " ) ", value: jsonObject[i].Symbol};
+                        }
+                        response( data );
+
+                    }
+                }
+            });
+        }
+    });
+    $("#favouriteButton").click(function(e) {
+        e.preventDefault();
+        if (curr_stock_json == null) {
+            return;
+        }
+        // get the current objcet Symbol
+        var stockSymbol = curr_stock_json.Symbol;
+        // check if the stockSymbol was in localStorage
+        if(localStorage.length == 0 || localStorage.getItem(stockSymbol) === null){
+            // the current symbol not in favorite list, we need add it;
+            localStorage.setItem(stockSymbol,"TRUE");
+            // update Start color
+            updateStarSpan(stockSymbol);
+            generateFavoriteRow(curr_stock_json);
+        } else{
+            //localStorage.removeItem(stockSymbol);
+            //updateStarSpan(stockSymbol);
+            deleteClick(stockSymbol);
+        }
+    });
 });
+
 function clearResult(){
     document.getElementById("validationInformation").innerHTML = " ";
     document.myform.inputText.value="";
@@ -86,7 +129,7 @@ function clearResult(){
 function _fixDate(dateIn) {
 	var dat = new Date(dateIn); // create data object
 	return Date.UTC(dat.getFullYear(), dat.getMonth(), dat.getDate());
-};
+}
 function showArrow(value) {
 	if(value>0) {
 		//arrow image
@@ -106,7 +149,6 @@ function changeTextColor(value, textID) {
 	else if(value<0) {
 		$("#"+textID).css('color', 'red'); 
 	}
-	else {};
 }
 function ShowFacebook(){
     // need some global variable to store some object at least the symbol we are now 
@@ -138,7 +180,7 @@ function generateFavoriteRow(jsonObject){
     if(jsonObject["Status"] == "SUCCESS"){
         //create each row in favorite list
         // need to create each id for each row;
-        favorRow = "<tr id=\""+ jsonObject.Symbol +"\">";
+        var favorRow = "<tr id=\""+ jsonObject.Symbol +"\">";
         favorRow += "<td>" +"<a href=\"#\" onclick=\"generateFormSectionTwo("+"\'"+jsonObject.Symbol+"\'" +")\">" + jsonObject.Symbol+ "</a></td>";
         //favorRow += "<td>" +"<a href=\"#sectionTwo\"  onclick=\"generateFormSectionTwo("+ jsonObject.Symbol+")\">"+ jsonObject.Symbol + "</a></td>";
         favorRow += "<td>" + jsonObject.Name + "</td>";
@@ -201,28 +243,7 @@ function deleteClick(Symbol){
 	localStorage.removeItem(Symbol);
 	updateStarSpan(Symbol);
 }
-//handle the refreshButton problem
-$("#refreshButton").click(function(e) {
-	refreshFavoritePannel();
-});
-// handle autoRefreshButton
-$("#autoRefreshButton").change(function() {
-	console.log("autoRefreshButton");
 
-    if ($("#autoRefreshButton").prop('checked')) {
-
-        autoRefreshFavouriteId = setInterval(function() {
-			refreshFavoritePannel();
-		}, 5000);
-	} else {
-		clearInterval(autoRefreshFavouriteId);
-	}
-});
-$("#searchForm").submit(function(e) {
-	e.preventDefault();
-	var symbol = $("#stockInput").val();
-	generateFormSectionTwo(symbol);
-}); 
 
 function render(data) {
 	// split the data set into ohlc and volume
@@ -294,7 +315,7 @@ function render(data) {
 			enabled:false
 		}
 	});
-};
+}
 function _getOHLC(json) {
 	var dates = json.Dates || [];
 	var elements = json.Elements || [];
@@ -310,30 +331,11 @@ function _getOHLC(json) {
 				 elements[0].DataSeries['close'].values[i]
 			];
 			chartSeries.push( pointData );
-		};
+		}
 	}
 	return chartSeries;
-};
-$("#favouriteButton").click(function(e) {
-    e.preventDefault();
-    if (curr_stock_json == null) {
-        return;
-    }
-    // get the current objcet Symbol
-    var stockSymbol = curr_stock_json.Symbol; 
-    // check if the stockSymbol was in localStorage 
-    if(localStorage.length == 0 || localStorage.getItem(stockSymbol) === null){
-        // the current symbol not in favorite list, we need add it;
-        localStorage.setItem(stockSymbol,"TRUE");
-        // update Start color
-        updateStarSpan(stockSymbol);
-        generateFavoriteRow(curr_stock_json);
-    } else{
-        //localStorage.removeItem(stockSymbol);
-        //updateStarSpan(stockSymbol);
-        deleteClick(stockSymbol);
-    }
-});
+}
+
 // change the star color
 function updateStarSpan(Symbol){
     if (localStorage.getItem(Symbol) == null) {
